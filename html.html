@@ -1,0 +1,284 @@
+Find what you need faster … Home is your new landing page and surfaces your most relevant files and folders
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Website Analyzer</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300&display=swap" rel="stylesheet">
+  <style>
+    /* Center-align text in the container */
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      margin: 0;
+      background: linear-gradient(45deg, #007bff, #ff3d6a, #29db72);
+      background-size: 400% 400%;
+      animation: gradientBG 10s infinite;
+      font-family: 'Poppins', sans-serif;
+    }
+
+    @keyframes gradientBG {
+      0% {
+        background-position: 0% 50%;
+      }
+      50% {
+        background-position: 100% 50%;
+      }
+      100% {
+        background-position: 0% 50%;
+      }
+    }
+
+    .loader {
+      margin-top: 40px;
+      border: 16px solid #fff;
+      border-top: 16px solid #ff3d6a;
+      border-radius: 50%;
+      width: 120px;
+      height: 120px;
+      animation: spin 2s linear infinite;
+      display: none;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Center-align text in the results container */
+    #results {
+      text-align: center;
+      display: none;
+    }
+
+    #results h2 {
+      font-size: 36px;
+      color: #fff;
+    }
+
+    #results p {
+      font-size: 24px;
+    }
+
+    #performance {
+      font-size: 30px;
+      margin-top: 20px;
+      color: #14de35;
+    }
+
+    .performance-bar {
+      background-color: #fff;
+      width: 0;
+      height: 20px;
+      transition: width 1s;
+    }
+
+    #screenshot {
+      max-width: 80%;
+      display: none;
+      margin: 20px;
+      border: 1px solid #fff;
+    }
+
+    .container {
+      text-align: center;
+    }
+
+    .header {
+      background-color: #ff3d6a;
+      color: #fff;
+      padding: 20px 0;
+      text-align: center;
+    }
+
+    .header h1 {
+      font-size: 48px;
+      font-weight: bold;
+    }
+
+    .description {
+      font-size: 24px;
+      margin-top: 20px;
+      color: #fff;
+    }
+
+    .input-group {
+      width: 60%;
+      margin: 20px auto;
+    }
+
+    #urlInput {
+      padding: 10px;
+      width: 80%;
+      font-size: 20px;
+    }
+
+    #analyzeButton {
+      font-size: 20px;
+      padding: 10px 20px;
+      background: linear-gradient(45deg, #ff3d6a, #29db72);
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background 0.3s ease-in-out;
+    }
+
+    #analyzeButton:hover {
+      background: linear-gradient(45deg, #29db72, #ff3d6a);
+    }
+
+    .result-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 20px;
+    }
+
+    #loader:empty::before {
+      font-size: 24px;
+      color: #fff;
+      margin-top: 20px;
+      display: block;
+    }
+
+    #title {
+      font-size: 48px;
+      font-weight: bold;
+      color: #fff;
+      display: block;
+      margin: 20px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Website Analyzer</h1>
+    <p id="title">Analyze Your Website's Performance</p>
+  </div>
+  <p class="description">Enter your website URL below and discover its performance:</p>
+  <div class="input-group">
+    <input type="text" id="urlInput" placeholder="Enter your website URL">
+    <button id="analyzeButton">Analyze</button>
+  </div>
+  <div class="loader" id="loader"></div>
+  <div class="result-container">
+    <div id="results">
+      <h2>Performance Metrics</h2>
+    </div>
+    <img id="screenshot" alt="Website Screenshot">
+  </div>
+
+  <script>
+   async function run(url) {
+      // Add "https://" if it's missing
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        url = 'https://' + url;
+      }
+
+      // Clear previous data
+      document.getElementById('results').innerHTML = '';
+      // Show the loader while waiting for the PageSpeed Insights API response
+      document.getElementById('loader').style.display = 'block';
+
+      // Hide the previous screenshot
+      const screenshot = document.getElementById('screenshot');
+      screenshot.style.display = 'none';
+
+      const apiUrl = setUpQuery(url);
+      const response = await fetch(apiUrl);
+      const json = await response.json();
+
+      // Hide the loader when the PageSpeed Insights API response is received
+      document.getElementById('loader').style.display = 'none';
+
+      // See https://developers.google.com/speed/docs/insights/v5/reference/pagespeedapi/runpagespeed#response
+      // to learn more about each of the properties in the response object.
+      const cruxMetrics = {
+        "First Contentful Paint": json.loadingExperience.metrics.FIRST_CONTENTFUL_PAINT_MS ? json.loadingExperience.metrics.FIRST_CONTENTFUL_PAINT_MS.category : 'N/A',
+        "First Input Delay": json.loadingExperience.metrics.FIRST_INPUT_DELAY_MS ? json.loadingExperience.metrics.FIRST_INPUT_DELAY_MS.category : 'N/A'
+      };
+      const lighthouse = json.lighthouseResult;
+      const lighthouseMetrics = {
+        'First Contentful Paint': lighthouse.audits['first-contentful-paint'] ? lighthouse.audits['first-contentful-paint'].displayValue : 'N/A',
+        'Time To Interactive': lighthouse.audits['interactive'] ? lighthouse.audits['interactive'].displayValue : 'N/A',
+        'First Meaningful Paint': lighthouse.audits['first-meaningful-paint'] ? lighthouse.audits['first-meaningful-paint'].displayValue : 'N/A',
+        'First CPU Idle': lighthouse.audits['first-cpu-idle'] ? lighthouse.audits['first-cpu-idle'].displayValue : 'N/A',
+        'Estimated Input Latency': lighthouse.audits['estimated-input-latency'] ? lighthouse.audits['estimated-input-latency'].displayValue : 'N/A'
+      };
+      displayResults(cruxMetrics, lighthouseMetrics);
+
+      // Calculate the performance percentage
+      const performanceMetrics = [
+        lighthouseMetrics['First Contentful Paint'],
+        lighthouseMetrics['Time To Interactive'],
+        lighthouseMetrics['First Meaningful Paint']
+      ];
+      
+
+      // Request a screenshot of the website using Microlink API
+      const screenshotUrl = `https://api.microlink.io/?url=${url}&screenshot=true&embed=screenshot.url`;
+      await displayScreenshot(screenshotUrl);
+    }
+
+    function setUpQuery(url) {
+      const apiKey = 'AIzaSyBBAdR4o4286xcI2AUefXCjQzTVEj6EceA';
+      const api = 'https://www.googleapis.com/pagespeedonline/v5/runPagespeed';
+      const parameters = {
+        url: encodeURIComponent(url),
+        key: apiKey
+      };
+      let query = `${api}?`;
+      for (key in parameters) {
+        query += `${key}=${parameters[key]}&`;
+      }
+      return query;
+    }
+
+    function displayResults(cruxMetrics, lighthouseMetrics) {
+      const resultsDiv = document.getElementById('results');
+      resultsDiv.style.display = 'block';
+
+      const cruxHeader = document.createElement('h2');
+      cruxHeader.textContent = "Chrome User Experience Report Results";
+      resultsDiv.appendChild(cruxHeader);
+      for (key in cruxMetrics) {
+        const p = document.createElement('p');
+        p.textContent = `${key}: ${cruxMetrics[key]}`;
+        resultsDiv.appendChild(p);
+      }
+
+      const lighthouseHeader = document.createElement('h2');
+      lighthouseHeader.textContent = "Lighthouse Results";
+      resultsDiv.appendChild(lighthouseHeader);
+      for (key in lighthouseMetrics) {
+        const p = document.createElement('p');
+        p.textContent = `${key}: ${lighthouseMetrics[key]}`;
+        resultsDiv.appendChild(p);
+      }
+    }
+
+    async function displayScreenshot(screenshotUrl) {
+      const screenshot = document.getElementById('screenshot');
+      const response = await fetch(screenshotUrl);
+      const blob = await response.blob();
+      screenshot.src = URL.createObjectURL(blob);
+      screenshot.style.display = 'block';
+    }
+
+    const analyzeButton = document.getElementById('analyzeButton');
+    analyzeButton.addEventListener('click', function() {
+      const urlInput = document.getElementById('urlInput');
+      const url = urlInput.value;
+      run(url);
+    });
+  </script>
+
+  <!-- Bootstrap link -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
